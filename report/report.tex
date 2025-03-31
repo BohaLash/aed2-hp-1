@@ -1,107 +1,100 @@
 \documentclass{article}
-\usepackage{amsmath} % For math equations and text
-\usepackage{geometry} % For adjusting margins
-\usepackage{booktabs} % For better table lines
-\usepackage{siunitx} % For SI units
-
+\usepackage{amsmath}
+\usepackage{geometry}
 \geometry{a4paper, margin=1in}
-
-\title{HP-1 Engine Design: Task C Report \\ Minimum Uninstalled Specific Thrust Calculation}
-\author{Analysis based on provided script output}
-\date{\today} % Or use a specific date: March 31, 2025
+\usepackage{siunitx} % For units
 
 \begin{document}
 
-\maketitle
+\section*{HP-1 Engine Preliminary Analysis Report: Parts B \& C}
 
-\section{Objective}
+This report details the analysis and corrected calculations for Task B (Maximum Allowable TSFC) and Task C (Minimum Specific Thrust) based on the requirements outlined in the HP-1 design problem manual \cite{manual}.
 
-This report summarizes the calculations performed for Task C of the HP-1 engine design problem, as detailed in \texttt{manual.md.txt}. The objective was to determine the minimum required uninstalled specific thrust ($F_{\text{uninstalled}}/\dot{m}_{\text{air}}$) for the engine at the specified cruise condition for various inlet diameters.
+\section{Task B: Maximum Allowable TSFC}
 
-\section{Methodology}
-
-The calculations were performed using a Python script based on the parameters and requirements outlined in Task A and Task C of \texttt{manual.md.txt}.
-
-\subsection{Cruise Conditions}
+The maximum allowable Thrust Specific Fuel Consumption (TSFC) for the cruise segment is determined using the Breguet range equation. Key parameters and corrections based on the manual are:
 \begin{itemize}
-    \item Flight Altitude: \SI{11}{km}
-    \item Flight Mach Number: M = 0.83
-    \item Initial Rate of Climb ($P_s$): \SI{1.5}{m/s} (as per Task A.3 for attaining cruise)
-    \item Atmospheric Conditions at \SI{11}{km} (ISA):
-        \begin{itemize}
-            \item Temperature (T): \SI{216.65}{K}
-            \item Pressure (P): \SI{22631.70}{Pa}
-            \item Density ($\rho$): \SI{0.3639}{kg/m^3}
-            \item Speed of Sound (a): \SI{295.07}{m/s}
-        \end{itemize}
-    \item Cruise Speed (V = M $\times$ a): \SI{244.91}{m/s}
+    \item Cruise Mach Number: $M = 0.83$
+    \item Cruise Altitude: $h = \SI{11}{km}$ ($T = \SI{216.65}{K}$, $a = \SI{295.07}{m/s}$)
+    \item Cruise Speed: $V = M \times a = 0.83 \times \SI{295.07}{m/s} = \SI{244.91}{m/s}$
+    \item Cruise Segment Range: $R = \SI{10650}{km}$ (from Table 1 \cite{manual})
+    \item Start of Cruise Weight: $W_{\text{start}} = \SI{1577940}{N}$ (approx. \SI{160850}{kg}) \cite{manual}
+    \item Cruise Fuel: $\SI{50240}{kg}$ (from Table 1 \cite{manual})
+    \item End of Cruise Weight: $W_{\text{end}} = W_{\text{start}} - (\text{Cruise Fuel} \times g) = \SI{160850}{kg} - \SI{50240}{kg} = \SI{110610}{kg}$
+    \item Cruise Weight Fraction: $W_{\text{end}} / W_{\text{start}} = 110610 / 160850 = 0.6877$
+    \item Assumed Lift-to-Drag Ratio: $L/D = 17.0$ (User assumption, requires verification)
+    \item Installation Loss Factor: $\Phi_{\text{loss}} = 0.02$ \cite{manual}
 \end{itemize}
 
-\subsection{Aircraft Parameters (Assumed/Placeholder)}
-\textit{Note: The following values were used in the provided script output but were flagged as placeholders requiring verification against \texttt{book.md.txt} Example 1.2 and \texttt{manual.md.txt} Table 1.}
+The Breguet range equation is:
+\[ R = \frac{V}{S_{\text{installed}}} \left( \frac{L}{D} \right) \ln \left( \frac{W_{\text{start}}}{W_{\text{end}}} \right) \]
+Rearranging for installed TSFC ($S_{\text{installed}}$ in \SI{}{kg/(N.s)}):
+\[ S_{\text{installed}} = \frac{V}{R} \left( \frac{L}{D} \right) \ln \left( \frac{W_{\text{start}}}{W_{\text{end}}} \right) \]
+\[ S_{\text{installed}} = \frac{\SI{244.91}{m/s}}{\SI{10650e3}{m}} (17.0) \ln \left( \frac{1}{0.6877} \right) \]
+\[ S_{\text{installed}} = (\SI{2.2996e-5}{s^{-1}}) (17.0) (0.3744) = \SI{1.4620e-4}{kg/(N.s)} \]
+
+The uninstalled TSFC ($S$) is:
+\[ S = \frac{S_{\text{installed}}}{1 - \Phi_{\text{loss}}} = \frac{\SI{1.4620e-4}{kg/(N.s)}}{1 - 0.02} = \frac{\SI{1.4620e-4}{kg/(N.s)}}{0.98} \]
+\[ S = \SI{1.4918e-4}{kg/(N.s)} = \SI{14.92}{mg/(N.s)} \]
+
+\textbf{Result Task B:} The maximum allowable uninstalled TSFC is \textbf{\SI{14.92}{mg/(N.s)}}. This value is realistic for modern high-bypass turbofan engines at cruise conditions. The original calculation result (\SI{17.08}{mg/(N.s)}) differed primarily due to using incorrect initial assumptions for cruise weight fraction and range.
+
+\section{Task C: Minimum Specific Thrust}
+
+The minimum required specific thrust ($F/ \dot{m}_{\text{air}}$) is determined by the required engine thrust at the start of cruise and the maximum possible air mass flow through the engine inlet.
+
+\subsection{Required Uninstalled Thrust per Engine}
 \begin{itemize}
-    \item Cruise Weight (W): \SI{150000}{kg} (\SI{1470998}{N})
-    \item Lift-to-Drag Ratio (L/D): 17.0
+    \item Start of Cruise Weight: $W = \SI{1577940}{N}$ \cite{manual}
+    \item Lift-to-Drag Ratio: $L/D = 17.0$ (Assumed)
+    \item Drag: $D = W / (L/D) = \SI{1577940}{N} / 17.0 = \SI{92820}{N}$
+    \item Required Rate of Climb: $P_s = \SI{1.5}{m/s}$ \cite{manual}
+    \item Cruise Speed: $V = \SI{244.91}{m/s}$
+    \item Required Installed Thrust (Total): $T_{\text{installed}} = D + \frac{W \times P_s}{V} = \SI{92820}{N} + \frac{\SI{1577940}{N} \times \SI{1.5}{m/s}}{\SI{244.91}{m/s}} = \SI{92820}{N} + \SI{9665}{N} = \SI{102485}{N}$
+    \item Required Uninstalled Thrust (Total): $T_{\text{uninstalled, total}} = \frac{T_{\text{installed}}}{1 - \Phi_{\text{loss}}} = \frac{\SI{102485}{N}}{1 - 0.02} = \SI{104577}{N}$
+    \item Required Uninstalled Thrust per Engine (2 engines): $T_{\text{uninstalled, eng}} = T_{\text{uninstalled, total}} / 2 = \SI{104577}{N} / 2 = \SI{52288}{N}$
 \end{itemize}
+This required thrust (\SI{52288}{N}/engine) is higher than the originally calculated \SI{48744}{N}/engine due to the use of the correct start-of-cruise weight.
 
-\subsection{Calculations}
-\begin{enumerate}
-    \item \textbf{Required Installed Thrust ($T_{\text{installed}}$):} Calculated for the twin-engine aircraft to attain the initial cruise condition, including the specified rate of climb ($P_s$). Based on the assumption that Eq. (1.28) from \texttt{book.md.txt} includes the climb component:
-    \begin{equation*}
-        T_{\text{installed}} = \text{Drag} + \frac{W \times P_s}{V} = \frac{W}{L/D} + \frac{W \times P_s}{V}
-    \end{equation*}
-    Result: $T_{\text{installed}} = \SI{95539}{N}$ (Total for aircraft)
+\subsection{Maximum Inlet Mass Flow}
+The maximum mass flow per unit area is given by the manual \cite{manual}:
+\[ \frac{\dot{m}}{A} = 231.8 \frac{\delta_{0}}{\sqrt{\theta_{0}}} \quad \text{(\si{kg/s}/m^2)} \]
+Where $\theta_0 = T_{t0}/T_{SL}$ and $\delta_0 = P_{t0}/P_{SL}$. At $M=0.83$, $h=\SI{11}{km}$ ($T=\SI{216.65}{K}$, $P=\SI{22631.7}{Pa}$):
+\begin{itemize}
+    \item $T_{t0} = T (1 + \frac{\gamma-1}{2} M^2) = 216.65 (1 + 0.2 \times 0.83^2) = \SI{246.49}{K}$
+    \item $P_{t0} = P (1 + \frac{\gamma-1}{2} M^2)^{\gamma/(\gamma-1)} = 22631.7 (1 + 0.2 \times 0.83^2)^{3.5} = \SI{35611}{Pa}$
+    \item $\theta_0 = T_{t0} / \SI{288.15}{K} = 246.49 / 288.15 = 0.8554$
+    \item $\delta_0 = P_{t0} / \SI{101325}{Pa} = 35611 / 101325 = 0.3514$
+\end{itemize}
+\[ \frac{\dot{m}}{A} = 231.8 \frac{0.3514}{\sqrt{0.8554}} = 231.8 \times \frac{0.3514}{0.9249} = \SI{88.01}{kg/s/m^2} \]
 
-    \item \textbf{Required Uninstalled Thrust ($T_{\text{uninstalled}}$):} Calculated by accounting for installation losses ($\Phi_{\text{inlet}} + \Phi_{\text{noz}} = 0.02$).
-    \begin{equation*}
-        T_{\text{uninstalled}} = \frac{T_{\text{installed}}}{1 - (\Phi_{\text{inlet}} + \Phi_{\text{noz}})}
-    \end{equation*}
-    Result: $T_{\text{uninstalled}} = \SI{97489}{N}$ (Total for aircraft) \\
-    Result per engine (assuming twin-engine): $T_{\text{uninstalled, engine}} = \SI{48744}{N}$
+\subsection{Minimum Specific Thrust Calculation}
+The minimum uninstalled specific thrust is $F_{\text{uninstalled}} / \dot{m}_{\text{air, max}} = T_{\text{uninstalled, eng}} / (A_{\text{inlet}} \times (\dot{m}/A)_{\text{max}})$.
 
-    \item \textbf{Maximum Inlet Mass Flow Rate ($\dot{m}_{\text{air, engine}}$):} Calculated for one engine based on the inlet diameter ($D_{\text{inlet}}$), assuming the diameter refers to a single engine inlet.
-    \begin{equation*}
-        A_{\text{inlet, engine}} = \frac{\pi D_{\text{inlet}}^2}{4}
-    \end{equation*}
-    \begin{equation*}
-        \dot{m}_{\text{air, engine}} = \rho \times V \times A_{\text{inlet, engine}}
-    \end{equation*}
+The manual states a maximum allowable inlet diameter of \SI{2.2}{m} \cite{manual}. Calculations for larger diameters are included for comparison but violate this constraint.
 
-    \item \textbf{Minimum Uninstalled Specific Thrust ($F/\dot{m}$):} Calculated per engine.
-    \begin{equation*}
-        \left( \frac{F}{\dot{m}} \right)_{\text{min}} = \frac{T_{\text{uninstalled, engine}}}{\dot{m}_{\text{air, engine}}}
-    \end{equation*}
-\end{enumerate}
-
-\section{Results}
-
-The calculated maximum inlet mass flow rate and minimum uninstalled specific thrust for each specified engine inlet diameter are presented in Table \ref{tab:results}.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Minimum Uninstalled Specific Thrust vs. Inlet Diameter at Cruise (M=0.83, \SI{11}{km}, Ps=\SI{1.5}{m/s})}
-    \label{tab:results}
-    \begin{tabular}{@{}cccc@{}}
-        \toprule
-        Inlet Diameter & Inlet Area per Engine & Max Air Mass Flow per Engine & Min. Uninstalled Specific Thrust \\
-        $D_{\text{inlet}}$ (\si{m}) & $A_{\text{inlet}}$ (\si{m^2}) & $\dot{m}_{\text{air}}$ (\si{kg/s}) & $F_{\text{uninstalled}}/\dot{m}_{\text{air}}$ (\si{N.s/kg}) \\
-        \midrule
-        2.20 & 3.801 & 338.79 & 143.88 \\
-        2.50 & 4.909 & 437.49 & 111.42 \\
-        2.75 & 5.940 & 529.37 & 92.08 \\
-        3.00 & 7.069 & 629.99 & 77.37 \\
-        3.25 & 8.296 & 739.36 & 65.93 \\
-        3.50 & 9.621 & 857.49 & 56.85 \\
-        \bottomrule
-    \end{tabular}
+\begin{table}[h!]
+\centering
+\caption{Recalculated Minimum Specific Thrust vs. Inlet Diameter}
+\begin{tabular}{|c|c|S[table-format=3.1]|S[table-format=3.1]|c|}
+\hline
+Diameter (\si{m}) & Inlet Area (\si{m^2}) & {Max Mass Flow (\si{kg/s})} & {Min Spec. Thrust (\si{N.s/kg})} & Feasible \\
+\hline
+\textbf{2.2} & 3.801 & 334.5 & \textbf{156.3} & \textbf{Yes} \\
+2.5 & 4.909 & 432.0 & 121.0 & No \\
+2.75 & 5.940 & 522.8 & 99.0 & No \\
+3.0 & 7.069 & 622.1 & 84.1 & No \\
+3.25 & 8.296 & 730.1 & 71.6 & No \\
+3.5 & 9.621 & 846.7 & 61.7 & No \\
+\hline
+\end{tabular}
+\label{tab:spec_thrust}
 \end{table}
 
-\section{Conclusion}
+\textbf{Result Task C:} Considering the constraint $D_{\text{inlet}} \le \SI{2.2}{m}$, the minimum allowable uninstalled specific thrust at the start of cruise is \textbf{\SI{156.3}{N.s/kg}}. The specific thrust values decrease with increasing inlet diameter (mass flow) for the fixed thrust requirement. The recalculated values differ from the original calculations due to the corrected thrust requirement and the application of the specific mass flow formula from the manual.
 
-The analysis shows that, for the given flight condition and required uninstalled thrust per engine (\SI{48744}{N}), the minimum required uninstalled specific thrust decreases significantly as the engine inlet diameter increases. This is expected, as a larger inlet allows for a higher maximum air mass flow rate, thus requiring less thrust generation per unit of airflow.
-
-The specific thrust ranges from approximately \SI{144}{N.s/kg} for a \SI{2.2}{m} diameter inlet down to \SI{57}{N.s/kg} for a \SI{3.5}{m} diameter inlet under the assumed conditions.
-
-\textbf{Important Reminder:} The numerical results presented are based on assumed placeholder values for aircraft cruise weight (W=\SI{150000}{kg}) and lift-to-drag ratio (L/D=17.0). These values must be verified and updated using the specific data from \texttt{manual.md.txt} (Table 1) and \texttt{book.md.txt} (Example 1.2) for accurate final results. The interpretation of Eq. (1.28) to include the initial climb rate should also be confirmed.
+\begin{thebibliography}{9}
+    \bibitem{manual} Provided `manual-md.txt` file detailing the HP-1 Aircraft Design Problem.
+\end{thebibliography}
 
 \end{document}
