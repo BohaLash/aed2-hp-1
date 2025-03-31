@@ -1,232 +1,214 @@
-import math
-import numpy as np  # Import numpy for ln
+import numpy as np
+from scipy.optimize import newton
 
-# -----------------------------------------------------------------------------
-# Task A: Data Collection
-# -----------------------------------------------------------------------------
+# Constants
+g = 9.81  # m/s^2
+R = 287  # J/(kg·K) for air
+gamma = 1.4  # ratio of specific heats
+cp = 1.004  # kJ/(kg·K)
+hPR = 42800  # kJ/kg, fuel heating value
 
-print("--- Task A: Data Collection ---")
-
-# A.1: Physical Constants and Standard Atmosphere (ISA) Data
-# Source: Standard definitions and Google Search results
-g = 9.80665  # Gravity (m/s^2)
-R_air = 287.053  # Specific gas constant for dry air (J/kg*K)
-gamma_air = 1.4  # Ratio of specific heats for air
-
-# ISA Sea Level Conditions
-T0_isa = 288.15  # Temperature (K)
-P0_isa = 101325  # Pressure (Pa)
-rho0_isa = 1.225  # Density (kg/m^3)
-
-# ISA Lapse Rate (Troposphere)
-L_isa = 0.0065  # Temperature lapse rate (K/m)
+# Aircraft parameters from the problem
+W_start_cruise = 1577940  # N, starting cruise weight
+M_cruise = 0.83
+cruise_alt_start = 11000  # m, 11 km
+cruise_distance = 10650  # km
+payload = 22770  # kg
+fuel_used_cruise = 50240  # kg
+fuel_used_total = 61200  # kg
+S = 427.8  # m^2, wing area (from Example 1.2)
+engine_thrust_takeoff = 214000  # N per engine (from problem)
 
 
-# Function to calculate ISA properties in the Troposphere (h < 11km)
-def calculate_isa_troposphere(h_m):
-    """Calculates ISA T, P, rho, a for a given altitude h_m (meters) in the troposphere."""
-    T = T0_isa - L_isa * h_m
-    P = P0_isa * (T / T0_isa) ** (g / (L_isa * R_air))
-    rho = P / (R_air * T)
-    a = math.sqrt(gamma_air * R_air * T)
-    return T, P, rho, a
+# Atmosphere model functions
+def atm_properties(h):
+    """Calculate atmospheric properties at altitude h (m)"""
+    if h <= 11000:
+        # Troposphere
+        T0 = 288.16  # K
+        P0 = 101325  # Pa
+        a = -0.0065  # K/m
+        T = T0 + a * h
+        P = P0 * (T / T0) ** (-g / (a * R))
+    else:
+        # Lower stratosphere
+        T = 216.66  # K
+        P = 22632 * np.exp(-g * (h - 11000) / (R * T))
+
+    rho = P / (R * T)
+    a_sound = np.sqrt(gamma * R * T)
+    return T, P, rho, a_sound
 
 
-# Calculate/Define conditions at relevant altitudes
-# Takeoff Altitude: 1.6 km = 1600 m
-h_takeoff_m = 1600
-T_isa_takeoff, P_isa_takeoff, rho_isa_takeoff, a_isa_takeoff = (
-    calculate_isa_troposphere(h_takeoff_m)
-)
+# Task B1: Cruise TSFC calculations
+def cruise_tsfc_calculations():
+    """Calculate allowable TSFC for cruise conditions"""
+    # Part (a): Cruise climb (constant CD/CL)
+    # Using Breguet range equation: R = (V/SFC)*(L/D)*ln(Wi/Wf)
+    V = M_cruise * atm_properties(cruise_alt_start)[3]  # cruise speed m/s
+    W_end_cruise = W_start_cruise - fuel_used_cruise * g  # N
 
-# Single-Engine Cruise Altitude: 5 km = 5000 m
-h_sec_m = 5000
-T_isa_sec, P_isa_sec, rho_isa_sec, a_isa_sec = calculate_isa_troposphere(h_sec_m)
+    # Convert cruise distance to meters
+    R_meters = cruise_distance * 1000
 
-# Initial Cruise Altitude: 11 km = 11000 m (Tropopause)
-# Source: Google Search result (Wikipedia) & calculated 'a'
-h_cruise_m = 11000
-T_isa_cruise = 216.65  # Temperature (K)
-P_isa_cruise = 22632  # Pressure (Pa)
-rho_isa_cruise = 0.3639  # Density (kg/m^3)
-a_isa_cruise = math.sqrt(gamma_air * R_air * T_isa_cruise)  # Speed of sound (m/s)
+    # Calculate average L/D (assuming constant CD/CL means constant L/D)
+    L_D_avg = (R_meters * (cp * V)) / (V * np.log(W_start_cruise / W_end_cruise))
 
-print(f"ISA Conditions at Takeoff Altitude ({h_takeoff_m} m):")
-print(f"  T = {T_isa_takeoff:.2f} K")
-print(f"  P = {P_isa_takeoff:.2f} Pa")
-print(f"  rho = {rho_isa_takeoff:.4f} kg/m^3")
-print(f"  a = {a_isa_takeoff:.2f} m/s")
-print(f"ISA Conditions at Single-Engine Altitude ({h_sec_m} m):")
-print(f"  T = {T_isa_sec:.2f} K")
-print(f"  P = {P_isa_sec:.2f} Pa")
-print(f"  rho = {rho_isa_sec:.4f} kg/m^3")
-print(f"  a = {a_isa_sec:.2f} m/s")
-print(f"ISA Conditions at Cruise Altitude ({h_cruise_m} m):")
-print(f"  T = {T_isa_cruise:.2f} K")
-print(f"  P = {P_isa_cruise:.2f} Pa")
-print(f"  rho = {rho_isa_cruise:.4f} kg/m^3")
-print(f"  a = {a_isa_cruise:.2f} m/s\n")
-
-# A.2: HP-1 Aircraft and Mission Parameters
-# Source: manual-md.txt (Task A description)
-M0_cruise = 0.83  # Cruise Mach number
-h_takeoff_km = 1.6  # Takeoff altitude (km)
-T_day_takeoff_C = 38  # Takeoff temperature on hot day (deg C)
-T_day_takeoff_K = T_day_takeoff_C + 273.15  # Takeoff temperature on hot day (K)
-runway_m = 3650  # Runway length (m)
-climb_gradient_oei = 0.024  # Single-engine climb gradient (%)
-payload_kg = 22770  # Payload (253 passengers * 90 kg)
-Range_km = 11120  # Design range (km)
-Range_m = Range_km * 1000  # Design range (m)
-loiter_min = 30  # Reserve fuel loiter time (min)
-h_cruise_km = 11  # Initial cruise altitude (km)
-Ps_cruise = 1.5  # Rate of climb at initial cruise (m/s)
-h_sec_km = 5  # Single-engine cruise altitude (km)
-M0_sec = 0.45  # Single-engine cruise Mach number
-Ps_sec = 1.5  # Rate of climb at single-engine cruise (m/s)
-N_eng = 2  # Number of engines
-
-print("HP-1 Aircraft and Mission Parameters:")
-print(f"  Cruise Mach: {M0_cruise}")
-print(f"  Cruise Altitude: {h_cruise_km} km")
-print(f"  Payload: {payload_kg} kg")
-print(f"  Design Range: {Range_km} km")
-print(f"  Number of Engines: {N_eng}\n")
-
-# A.3: Data from Example 1.2 (Mattingly Book) - **ASSUMED VALUES**
-# Source: manual-md.txt references Example 1.2. Actual values needed from book file.
-# !! These are HYPOTHETICAL values for demonstration !!
-W_TO_kg = 150000.0  # Assumed Max Takeoff Weight (kg)
-W_empty_kg = 70000.0  # Assumed Empty Weight (kg)
-LD_cruise = 18.0  # Assumed Lift-to-Drag ratio at cruise
-LD_loiter = 15.0  # Assumed Lift-to-Drag ratio at loiter
-
-print("Data assumed from Example 1.2 (Mattingly Book):")
-print(f"  Assumed W_TO: {W_TO_kg} kg")
-print(f"  Assumed W_empty: {W_empty_kg} kg")
-print(f"  Assumed L/D (Cruise): {LD_cruise}")
-print(f"  Assumed L/D (Loiter): {LD_loiter}\n")
-
-# A.4: Mission Fuel Fractions from Table 1 - **ASSUMED VALUES**
-# Source: manual-md.txt mentions Table 1. Actual values needed from manual file.
-# !! These are HYPOTHETICAL values for demonstration !!
-# W_i / W_{i-1} fuel fractions for mission segments
-fuel_frac = {
-    "start_warmup": 0.995,
-    "taxi": 0.997,
-    "takeoff": 0.998,
-    "climb": 0.980,
-    "cruise": 0.820,  # This fraction significantly impacts range/TSFC calculations
-    "descent": 0.990,
-    "loiter": 0.985,  # Represents reserve fuel
-    "landing_taxi": 0.997,
-}
-
-print("Assumed Fuel Fractions from Table 1 (Manual):")
-for segment, fraction in fuel_frac.items():
-    print(f"  {segment}: {fraction}")
-print("\n")
-
-
-# -----------------------------------------------------------------------------
-# Task B: Thrust and Fuel Consumption Requirements
-# -----------------------------------------------------------------------------
-
-print("--- Task B: Requirement Calculations ---")
-
-# B.1: Calculate Overall Fuel Fraction and Fuel Weight
-# Product of all segment fractions gives W_final / W_initial (W_landing / W_TO)
-W_ratio_overall = 1.0
-for segment in fuel_frac:
-    W_ratio_overall *= fuel_frac[segment]
-
-# Product of fractions for mission *excluding* loiter (reserve)
-W_ratio_mission = (
-    fuel_frac["start_warmup"]
-    * fuel_frac["taxi"]
-    * fuel_frac["takeoff"]
-    * fuel_frac["climb"]
-    * fuel_frac["cruise"]
-    * fuel_frac["descent"]
-    * fuel_frac["landing_taxi"]
-)
-
-W_landing_kg = W_TO_kg * W_ratio_overall
-W_fuel_total_kg = W_TO_kg * (1.0 - W_ratio_overall)
-W_fuel_mission_kg = W_TO_kg * (
-    1.0 - W_ratio_mission / fuel_frac["loiter"]
-)  # Approx mission fuel
-W_fuel_reserve_kg = (
-    W_TO_kg * (1.0 - fuel_frac["loiter"]) * W_ratio_mission
-)  # Approx reserve fuel
-
-print("Fuel Consumption Requirements (based on assumed fractions):")
-print(f"  Overall Weight Ratio (W_landing / W_TO): {W_ratio_overall:.4f}")
-print(f"  Total Fuel Weight: {W_fuel_total_kg:.2f} kg")
-print(
-    f"  Mission Fuel Fraction (W_fuel_mission / W_TO): {(W_fuel_mission_kg / W_TO_kg):.4f}"
-)
-print(
-    f"  Reserve Fuel Fraction (W_fuel_reserve / W_TO): {(W_fuel_reserve_kg / W_TO_kg):.4f}\n"
-)
-
-# B.2: Calculate Weight at Start of Cruise
-W_start_climb = (
-    W_TO_kg * fuel_frac["start_warmup"] * fuel_frac["taxi"] * fuel_frac["takeoff"]
-)
-W_start_cruise_kg = W_start_climb * fuel_frac["climb"]
-
-print(f"Weight at Start of Cruise: {W_start_cruise_kg:.2f} kg\n")
-
-# B.3: Calculate Thrust Requirement at Start of Cruise
-# Assuming Level Flight (Thrust = Drag) at the beginning of the cruise segment
-# Drag = Weight / (L/D)
-Thrust_total_cruise_N = (W_start_cruise_kg * g) / LD_cruise
-Thrust_per_engine_cruise_N = Thrust_total_cruise_N / N_eng
-
-print("Thrust Requirements (Start of Cruise, Level Flight):")
-print(f"  Total Thrust Required: {Thrust_total_cruise_N:.2f} N")
-print(f"  Thrust per Engine: {Thrust_per_engine_cruise_N:.2f} N\n")
-
-# B.4: Implied Cruise TSFC (Informational)
-# Calculate TSFC (S) implied by the assumed cruise fuel fraction and L/D
-# Breguet Range: R = (V / (g*S)) * (L/D) * ln(W_start / W_end)
-# S = (V / (g*R)) * (L/D) * ln(W_start / W_end)
-V_cruise_mps = M0_cruise * a_isa_cruise
-W_end_cruise_kg = W_start_cruise_kg * fuel_frac["cruise"]
-
-# Check for valid weights and cruise fraction before calculation
-if (
-    W_start_cruise_kg > W_end_cruise_kg
-    and W_end_cruise_kg > 0
-    and fuel_frac["cruise"] < 1.0
-):
-    # Use the design range (Range_m) and cruise segment weight ratio
-    S_implied_cruise_sec_kg_N = (
-        (V_cruise_mps / (g * Range_m))
-        * LD_cruise
-        * np.log(W_start_cruise_kg / W_end_cruise_kg)
-    )
-    S_implied_cruise_hr_kg_N = (
-        S_implied_cruise_sec_kg_N * 3600
-    )  # Convert from per sec to per hour
-    # Convert to lbm/(hr*lbf) = (kg/(hr*N)) * (1/0.45359 kg/lbm) / (1/4.4482 N/lbf)
-    S_implied_cruise_hr_lbm_lbf = (
-        S_implied_cruise_hr_kg_N * (1 / 0.45359) / (1 / 4.4482)
+    # Allowable TSFC for cruise climb
+    TSFC_cruise_climb = (V / (L_D_avg * R_meters)) * np.log(
+        W_start_cruise / W_end_cruise
     )
 
-    print("Implied Cruise TSFC (based on assumed W_TO, L/D, and fuel fractions):")
-    print(f"  V_cruise: {V_cruise_mps:.2f} m/s")
-    print(f"  Cruise Fuel Ratio (W_end / W_start): {fuel_frac['cruise']:.4f}")
-    print(f"  Implied S: {S_implied_cruise_sec_kg_N:.4e} kg/(N*s)")
-    print(f"  Implied S: {S_implied_cruise_hr_kg_N:.4f} kg/(N*hr)")
-    print(f"  Implied S: {S_implied_cruise_hr_lbm_lbf:.4f} lbm/(lbf*hr)")
-    print(
-        "  Note: This TSFC is highly sensitive to the assumed cruise fuel fraction and L/D."
-    )
-else:
-    print(
-        "Could not calculate implied cruise TSFC due to invalid weight or fuel fraction values."
+    # Calculate final altitude for cruise climb (constant CL)
+    # At constant CL, W/rho = constant
+    rho_start = atm_properties(cruise_alt_start)[2]
+    rho_end = rho_start * (W_end_cruise / W_start_cruise)
+
+    # Solve for altitude with this density
+    def alt_eqn(h):
+        return atm_properties(h)[2] - rho_end
+
+    h_end = newton(alt_eqn, cruise_alt_start)
+
+    # Part (b): Constant altitude cruise
+    CL_start = W_start_cruise / (0.5 * rho_start * V**2 * S)
+    CL_end = W_end_cruise / (0.5 * rho_start * V**2 * S)
+
+    # Assuming parabolic drag polar: CD = CD0 + K*CL^2
+    # From Example 1.2: CD0 = 0.015, K = 0.04
+    CD0 = 0.015
+    K = 0.04
+
+    CD_start = CD0 + K * CL_start**2
+    CD_end = CD0 + K * CL_end**2
+
+    L_D_start = CL_start / CD_start
+    L_D_end = CL_end / CD_end
+    L_D_avg_const_alt = (L_D_start + L_D_end) / 2
+
+    TSFC_const_alt = (V / (L_D_avg_const_alt * R_meters)) * np.log(
+        W_start_cruise / W_end_cruise
     )
 
-print("\n--- End of Script ---")
+    return {
+        "cruise_climb": {
+            "TSFC": TSFC_cruise_climb * 1e5,  # convert to kg/(N·s) from kg/(N·m)
+            "end_altitude": h_end,
+            "L_D": L_D_avg,
+        },
+        "constant_altitude": {
+            "TSFC": TSFC_const_alt * 1e5,
+            "L_D_start": L_D_start,
+            "L_D_end": L_D_end,
+            "L_D_avg": L_D_avg_const_alt,
+        },
+    }
+
+
+# Task B2: Loiter Mach numbers
+def loiter_mach_numbers():
+    """Calculate loiter Mach numbers at different altitudes"""
+    altitudes = [10000, 9000, 8000, 7000, 6000]  # m
+    W_loiter = 0.64 * (W_start_cruise + fuel_used_cruise * g)  # 64% of WTO
+
+    mach_numbers = []
+    for h in altitudes:
+        T, P, rho, a = atm_properties(h)
+
+        # For loiter, we want maximum endurance (max L/D)
+        # Maximum L/D occurs when CD0 = K*CL^2
+        CL_opt = np.sqrt(CD0 / K)
+        CD_opt = 2 * CD0
+        L_D_max = CL_opt / CD_opt
+
+        # Required velocity for this CL
+        V = np.sqrt(2 * W_loiter / (rho * S * CL_opt))
+        M = V / a
+        mach_numbers.append(M)
+
+    return dict(zip(altitudes, mach_numbers))
+
+
+# Task B3: Aircraft drag calculations
+def calculate_drag_points():
+    """Calculate drag at various flight points"""
+    drag_points = {}
+
+    # (a) Takeoff, M=0.23, sea level
+    M = 0.23
+    T, P, rho, a = atm_properties(0)
+    V = M * a
+    W_TO = W_start_cruise + fuel_used_total * g  # approx takeoff weight
+    CL = W_TO / (0.5 * rho * V**2 * S)
+    CD = CD0 + K * CL**2
+    D = 0.5 * rho * V**2 * S * CD
+    drag_points["takeoff"] = D
+
+    # (b) Start of cruise, M=0.83, 11 km
+    M = 0.83
+    T, P, rho, a = atm_properties(11000)
+    V = M * a
+    CL = W_start_cruise / (0.5 * rho * V**2 * S)
+    CD = CD0 + K * CL**2
+    D = 0.5 * rho * V**2 * S * CD
+    drag_points["start_cruise"] = D
+
+    # (c) End of cruise climb - use results from B1a
+    h_end = cruise_tsfc_calculations()["cruise_climb"]["end_altitude"]
+    T, P, rho, a = atm_properties(h_end)
+    V = M * a
+    W_end = W_start_cruise - fuel_used_cruise * g
+    CL = W_end / (0.5 * rho * V**2 * S)
+    CD = CD0 + K * CL**2
+    D = 0.5 * rho * V**2 * S * CD
+    drag_points["end_cruise_climb"] = D
+
+    # (d) End of 11-km cruise
+    # Same as start but with lower weight
+    W_end_constant = W_start_cruise - fuel_used_cruise * g
+    CL = W_end_constant / (0.5 * rho * V**2 * S)
+    CD = CD0 + K * CL**2
+    D = 0.5 * rho * V**2 * S * CD
+    drag_points["end_constant_cruise"] = D
+
+    # (e) Engine out (88% of WTO), M=0.45, 5 km
+    M = 0.45
+    T, P, rho, a = atm_properties(5000)
+    V = M * a
+    W_engine_out = 0.88 * (W_start_cruise + fuel_used_cruise * g)  # 88% of WTO
+    CL = W_engine_out / (0.5 * rho * V**2 * S)
+    CD = CD0 + K * CL**2
+    D = 0.5 * rho * V**2 * S * CD
+    drag_points["engine_out"] = D
+
+    return drag_points
+
+
+if __name__ == "__main__":
+    print("HP-1 Aircraft Engine Design Calculations\n")
+
+    # Task B1 calculations
+    print("Task B1: Cruise TSFC Calculations")
+    tsfc_results = cruise_tsfc_calculations()
+    print(f"(a) Cruise climb:")
+    print(f"  Allowable TSFC: {tsfc_results['cruise_climb']['TSFC']:.2e} kg/(N·s)")
+    print(f"  End altitude: {tsfc_results['cruise_climb']['end_altitude']/1000:.1f} km")
+    print(f"  Average L/D: {tsfc_results['cruise_climb']['L_D']:.1f}")
+
+    print(f"\n(b) Constant altitude cruise:")
+    print(f"  Allowable TSFC: {tsfc_results['constant_altitude']['TSFC']:.2e} kg/(N·s)")
+    print(f"  L/D start: {tsfc_results['constant_altitude']['L_D_start']:.1f}")
+    print(f"  L/D end: {tsfc_results['constant_altitude']['L_D_end']:.1f}")
+    print(f"  Average L/D: {tsfc_results['constant_altitude']['L_D_avg']:.1f}")
+
+    # Task B2 calculations
+    print("\nTask B2: Loiter Mach Numbers at 64% WTO")
+    loiter_mach = loiter_mach_numbers()
+    for alt, M in loiter_mach.items():
+        print(f"  {alt/1000:.0f} km: M = {M:.2f}")
+
+    # Task B3 calculations
+    print("\nTask B3: Aircraft Drag at Key Points")
+    drag_points = calculate_drag_points()
+    for point, drag in drag_points.items():
+        print(f"  {point.replace('_', ' ')}: {drag/1000:.1f} kN")
