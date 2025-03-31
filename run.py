@@ -19,6 +19,13 @@ fuel_used_total = 61200  # kg
 S = 427.8  # m^2, wing area (from Example 1.2)
 engine_thrust_takeoff = 214000  # N per engine (from problem)
 
+drag_coefficients_at_M = {
+    0: {"K1": 0.56, "K2": -0.004, "CD0": 0.014},
+    0.4: {"K1": 0.56, "K2": -0.004, "CD0": 0.014},
+    0.75: {"K1": 0.56, "K2": -0.008, "CD0": 0.014},
+    0.83: {"K1": 0.56, "K2": -0.008, "CD0": 0.015},
+}
+
 
 # Atmosphere model functions
 def atm_properties(h):
@@ -76,7 +83,7 @@ def cruise_tsfc_calculations():
 
     # Assuming parabolic drag polar: CD = CD0 + K*CL^2
     # From Example 1.2: CD0 = 0.015, K = 0.04
-    CD0 = 0.015
+    CD0 = drag_coefficients_at_M[0.83]["CD0"]
     K = 0.04
 
     CD_start = CD0 + K * CL_start**2
@@ -115,6 +122,10 @@ def loiter_mach_numbers():
     for h in altitudes:
         T, P, rho, a = atm_properties(h)
 
+        M = V / a
+        K = drag_coefficients_at_M[M]["K2"]
+        CD0 = drag_coefficients_at_M[M]["CD0"]
+
         # For loiter, we want maximum endurance (max L/D)
         # Maximum L/D occurs when CD0 = K*CL^2
         CL_opt = np.sqrt(CD0 / K)
@@ -123,7 +134,6 @@ def loiter_mach_numbers():
 
         # Required velocity for this CL
         V = np.sqrt(2 * W_loiter / (rho * S * CL_opt))
-        M = V / a
         mach_numbers.append(M)
 
     return dict(zip(altitudes, mach_numbers))
