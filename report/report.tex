@@ -1,0 +1,107 @@
+\documentclass{article}
+\usepackage{amsmath} % For math equations and text
+\usepackage{geometry} % For adjusting margins
+\usepackage{booktabs} % For better table lines
+\usepackage{siunitx} % For SI units
+
+\geometry{a4paper, margin=1in}
+
+\title{HP-1 Engine Design: Task C Report \\ Minimum Uninstalled Specific Thrust Calculation}
+\author{Analysis based on provided script output}
+\date{\today} % Or use a specific date: March 31, 2025
+
+\begin{document}
+
+\maketitle
+
+\section{Objective}
+
+This report summarizes the calculations performed for Task C of the HP-1 engine design problem, as detailed in \texttt{manual.md.txt}. The objective was to determine the minimum required uninstalled specific thrust ($F_{\text{uninstalled}}/\dot{m}_{\text{air}}$) for the engine at the specified cruise condition for various inlet diameters.
+
+\section{Methodology}
+
+The calculations were performed using a Python script based on the parameters and requirements outlined in Task A and Task C of \texttt{manual.md.txt}.
+
+\subsection{Cruise Conditions}
+\begin{itemize}
+    \item Flight Altitude: \SI{11}{km}
+    \item Flight Mach Number: M = 0.83
+    \item Initial Rate of Climb ($P_s$): \SI{1.5}{m/s} (as per Task A.3 for attaining cruise)
+    \item Atmospheric Conditions at \SI{11}{km} (ISA):
+        \begin{itemize}
+            \item Temperature (T): \SI{216.65}{K}
+            \item Pressure (P): \SI{22631.70}{Pa}
+            \item Density ($\rho$): \SI{0.3639}{kg/m^3}
+            \item Speed of Sound (a): \SI{295.07}{m/s}
+        \end{itemize}
+    \item Cruise Speed (V = M $\times$ a): \SI{244.91}{m/s}
+\end{itemize}
+
+\subsection{Aircraft Parameters (Assumed/Placeholder)}
+\textit{Note: The following values were used in the provided script output but were flagged as placeholders requiring verification against \texttt{book.md.txt} Example 1.2 and \texttt{manual.md.txt} Table 1.}
+\begin{itemize}
+    \item Cruise Weight (W): \SI{150000}{kg} (\SI{1470998}{N})
+    \item Lift-to-Drag Ratio (L/D): 17.0
+\end{itemize}
+
+\subsection{Calculations}
+\begin{enumerate}
+    \item \textbf{Required Installed Thrust ($T_{\text{installed}}$):} Calculated for the twin-engine aircraft to attain the initial cruise condition, including the specified rate of climb ($P_s$). Based on the assumption that Eq. (1.28) from \texttt{book.md.txt} includes the climb component:
+    \begin{equation*}
+        T_{\text{installed}} = \text{Drag} + \frac{W \times P_s}{V} = \frac{W}{L/D} + \frac{W \times P_s}{V}
+    \end{equation*}
+    Result: $T_{\text{installed}} = \SI{95539}{N}$ (Total for aircraft)
+
+    \item \textbf{Required Uninstalled Thrust ($T_{\text{uninstalled}}$):} Calculated by accounting for installation losses ($\Phi_{\text{inlet}} + \Phi_{\text{noz}} = 0.02$).
+    \begin{equation*}
+        T_{\text{uninstalled}} = \frac{T_{\text{installed}}}{1 - (\Phi_{\text{inlet}} + \Phi_{\text{noz}})}
+    \end{equation*}
+    Result: $T_{\text{uninstalled}} = \SI{97489}{N}$ (Total for aircraft) \\
+    Result per engine (assuming twin-engine): $T_{\text{uninstalled, engine}} = \SI{48744}{N}$
+
+    \item \textbf{Maximum Inlet Mass Flow Rate ($\dot{m}_{\text{air, engine}}$):} Calculated for one engine based on the inlet diameter ($D_{\text{inlet}}$), assuming the diameter refers to a single engine inlet.
+    \begin{equation*}
+        A_{\text{inlet, engine}} = \frac{\pi D_{\text{inlet}}^2}{4}
+    \end{equation*}
+    \begin{equation*}
+        \dot{m}_{\text{air, engine}} = \rho \times V \times A_{\text{inlet, engine}}
+    \end{equation*}
+
+    \item \textbf{Minimum Uninstalled Specific Thrust ($F/\dot{m}$):} Calculated per engine.
+    \begin{equation*}
+        \left( \frac{F}{\dot{m}} \right)_{\text{min}} = \frac{T_{\text{uninstalled, engine}}}{\dot{m}_{\text{air, engine}}}
+    \end{equation*}
+\end{enumerate}
+
+\section{Results}
+
+The calculated maximum inlet mass flow rate and minimum uninstalled specific thrust for each specified engine inlet diameter are presented in Table \ref{tab:results}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Minimum Uninstalled Specific Thrust vs. Inlet Diameter at Cruise (M=0.83, \SI{11}{km}, Ps=\SI{1.5}{m/s})}
+    \label{tab:results}
+    \begin{tabular}{@{}cccc@{}}
+        \toprule
+        Inlet Diameter & Inlet Area per Engine & Max Air Mass Flow per Engine & Min. Uninstalled Specific Thrust \\
+        $D_{\text{inlet}}$ (\si{m}) & $A_{\text{inlet}}$ (\si{m^2}) & $\dot{m}_{\text{air}}$ (\si{kg/s}) & $F_{\text{uninstalled}}/\dot{m}_{\text{air}}$ (\si{N.s/kg}) \\
+        \midrule
+        2.20 & 3.801 & 338.79 & 143.88 \\
+        2.50 & 4.909 & 437.49 & 111.42 \\
+        2.75 & 5.940 & 529.37 & 92.08 \\
+        3.00 & 7.069 & 629.99 & 77.37 \\
+        3.25 & 8.296 & 739.36 & 65.93 \\
+        3.50 & 9.621 & 857.49 & 56.85 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+The analysis shows that, for the given flight condition and required uninstalled thrust per engine (\SI{48744}{N}), the minimum required uninstalled specific thrust decreases significantly as the engine inlet diameter increases. This is expected, as a larger inlet allows for a higher maximum air mass flow rate, thus requiring less thrust generation per unit of airflow.
+
+The specific thrust ranges from approximately \SI{144}{N.s/kg} for a \SI{2.2}{m} diameter inlet down to \SI{57}{N.s/kg} for a \SI{3.5}{m} diameter inlet under the assumed conditions.
+
+\textbf{Important Reminder:} The numerical results presented are based on assumed placeholder values for aircraft cruise weight (W=\SI{150000}{kg}) and lift-to-drag ratio (L/D=17.0). These values must be verified and updated using the specific data from \texttt{manual.md.txt} (Table 1) and \texttt{book.md.txt} (Example 1.2) for accurate final results. The interpretation of Eq. (1.28) to include the initial climb rate should also be confirmed.
+
+\end{document}
