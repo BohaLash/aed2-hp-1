@@ -13,8 +13,12 @@ def speed_of_sound(
     return math.sqrt(heat_capacity_ratio * gas_constant * temperature)
 
 
-def mach_number(velocity: float, speed_of_sound: float):
-    return velocity / speed_of_sound
+def speed_of_sound_air(temperature: float):
+    return speed_of_sound(temperature, heat_capacity_ratio_air, R_air)
+
+
+def mach_number(velocity: float, altitude: float):
+    return velocity / speed_of_sound_air(temperature_air(altitude))
 
 
 def total_temperature_ratio(

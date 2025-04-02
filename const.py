@@ -1,5 +1,11 @@
 import math
 
+R = 8.314462  # J^1 mol^-1 K^-1
+avogadro = 6.02214076e23
+
+molar_mass_air = 0.02896  # kg^1 mol^-1
+R_air = R / molar_mass_air  # J^1 kg^-1 K^-1
+
 Cp_air = 1003.5  # J^1 kg^-1 K^-1
 Cv_air = 716.5  # J^1 kg^-1 K^-1
 
