@@ -36,6 +36,13 @@ def total_pressure_ratio(
     return 1 + (0.5 * (heat_capacity_ratio - 1) * mach_number**2) ** exponent
 
 
+def thrust(
+    mass_flow_rate: float,
+    velocity_difference: float,
+):
+    return mass_flow_rate * velocity_difference
+
+
 atmosphere = np.genfromtxt("atmosphere.csv", delimiter=",", names=True)
 
 plt.plot(
